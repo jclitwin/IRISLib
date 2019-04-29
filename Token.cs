@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IRISLib
-{
-    public class Token
+public class Token
     {
         /// Token type
         public enum eTOKEN
@@ -45,4 +43,3 @@ namespace IRISLib
             eTOKEN_TILD,       /// ~
         };
     }
-}

@@ -4,201 +4,203 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IRISLib
-{
-    public class Tokenizer
-    {
-        readonly static int DELIMITERS_SIZE = 256;
+ public class Tokenizer
+ {
+     private static readonly int DELIMITERS_SIZE = 256;
 
-        protected string _fileName;
-        protected byte[] _buffer;
-        protected uint _bufferLen;
-        protected bool[] _delimiters;
-        protected uint _pos;
-        protected int _line;
+     protected string _fileName;
+     protected byte[] _buffer;
+     protected uint _bufferLen;
+     protected bool[] _delimiters;
+     protected uint _pos;
+     protected int _line;
 
-        public Tokenizer()
-        {
-            _fileName = string.Empty;
+     public Tokenizer()
+     {
+         _fileName = string.Empty;
 
-            Array.Clear(_buffer, 0, _buffer.Length);
+         //Array.Clear(_buffer, 0, _buffer.Length);
 
-            _bufferLen = 0;
+         _bufferLen = 0;
 
-            _pos = 0;
-            _line = 1;
+         _pos = 0;
+         _line = 1;
 
-            _delimiters = new bool[DELIMITERS_SIZE];
-            for (int i = 0; i < DELIMITERS_SIZE; i++)
-            {
-                _delimiters[i] = false;
-            }
-        }
+         _delimiters = new bool[DELIMITERS_SIZE];
+         for (int i = 0; i < DELIMITERS_SIZE; i++)
+         {
+             _delimiters[i] = false;
+         }
+     }
 
-        public void SetSource(byte[] buffer, uint size, bool[] delimiters, string fileName)
-        {
-            if (buffer.Length <= 0)
-                return;
+     public void SetSource(byte[] buffer, uint size, char[] delimiters, string fileName)
+     {
+         if (buffer.Length <= 0)
+             return;
 
-            if (size <= 0)
-                return;
+         if (size <= 0)
+             return;
 
-            _fileName = fileName;
-            _buffer = buffer;
-            _bufferLen = size;
+         _fileName = fileName;
+         _buffer = buffer;
+         _bufferLen = size;
 
-            SetDelimiters(delimiters);
-        }
+         SetDelimiters(delimiters);
+     }
 
-        protected void SetDelimiters(bool[] delimiters)
-        {
-            _delimiters = new bool[DELIMITERS_SIZE];
-            for (int i = 0; i < DELIMITERS_SIZE; i++)
-            {
-                _delimiters[i] = delimiters[i];
-            }
-        }
+     protected void SetDelimiters(char[] delimiters)
+     {
+         _delimiters = new bool[DELIMITERS_SIZE];
+         for (int i = 0; i < DELIMITERS_SIZE; i++)
+         {
+             _delimiters[i] = false;
+         }
 
-        protected bool IsComment(byte b)
-        {
-            byte b1 = _buffer[_pos + 1];
-            return ((b == '/' && b1 == '/') || (b == '-' && b1 == '-'));
-        }
+         for (int i = 0; i < delimiters.Length; i++)
+         {
+             char c = delimiters[i];
+             _delimiters[c + 128] = true;
+         }
+     }
 
-        protected bool IsDelimiter(byte b)
-        {
-            return _delimiters[b + 128];
-        }
+     protected bool IsComment(char c)
+     {
+         char c1 = Convert.ToChar(_buffer[_pos + 1]);
+         return ((c == '/' && c1 == '/') || (c == '-' && c1 == '-'));
+     }
 
-        public bool GetNext(ref string str)
-        {
-            if (string.IsNullOrEmpty(str))
-                return false;
+     protected bool IsDelimiter(char c)
+     {
+         return _delimiters[c + 128];
+     }
 
-            if (_pos >= _bufferLen)
-                return false;
+     public bool GetNext(ref string str)
+     {
+         if (_pos >= _bufferLen)
+             return false;
 
-            byte[] lexeme = new byte[256];
-            for (int l = 0; l < 256; l++)
-                lexeme[l] = 0;
+         char[] lexeme = new char[256];
+         for (int l = 0; l < 256; l++)
+             lexeme[l] = '\0';
 
-            int i = 0;
-            byte b = 0;
+         int i = 0;
+         char c = '\0';
 
-            for(; _pos < _bufferLen; ++_pos)
-            {
-                b = _buffer[_pos];
-                if(b == '\n')
-                {
-                    ++_line;
-                }
-                else if(IsComment(b))
-                {
-                    for(_pos += 2; _pos < _bufferLen; ++_pos)
-                    {
-                        b = _buffer[_pos];
-                        if(b == '\n')
-                        {
-                            ++_line;
+         for (; _pos < _bufferLen; ++_pos)
+         {
+             c = Convert.ToChar(_buffer[_pos]);
+             if (c == '\n')
+             {
+                 ++_line;
+             }
+             else if (IsComment(c))
+             {
+                 for (_pos += 2; _pos < _bufferLen; ++_pos)
+                 {
+                     c = Convert.ToChar(_buffer[_pos]);
+                     if (c == '\n')
+                     {
+                         ++_line;
 
-                            break;
-                        }
-                    }
-                    if(i == 0)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        ++_pos;
-                        break;
-                    }
-                }
-                if(IsDelimiter(b))
-                {
-                    if (i == 0)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        ++_pos;
-                        break;
-                    }
-                }
-                if( i < 255)
-                {
-                    lexeme[i] = b;
-                    ++i;
-                }
-            }
+                         break;
+                     }
+                 }
 
-            lexeme[i] = 0;
-            str = System.Text.Encoding.UTF8.GetString(lexeme, 0, lexeme.Length);
-            return i != 0;
-        }
+                 if (i == 0)
+                 {
+                     continue;
+                 }
+                 else
+                 {
+                     ++_pos;
+                     break;
+                 }
+             }
 
-        public void GotoNextLine()
-        {
-            for (; _pos < _bufferLen; ++_pos)
-            {
-                byte b = _buffer[_pos];
-                if (b == '\n')
-                {
-                    ++_line;
-                    ++_pos;
+             if (IsDelimiter(c))
+             {
+                 if (i == 0)
+                 {
+                     continue;
+                 }
+                 else
+                 {
+                     ++_pos;
+                     break;
+                 }
+             }
 
-                    break;
-                }
-            }
-        }
+             if (i < 255)
+             {
+                 lexeme[i] = c;
+                 ++i;
+             }
+         }
 
-        public byte GetTail()
-        {
-            if (_pos >= _bufferLen)
-                return 0;
-            else
-                return _buffer[_pos];
-        }
+         lexeme[i] = '\0';
+         str = new string(lexeme);
 
-        public bool IsEnd()
-        {
-            uint pos = _pos;
-            byte b = 0;
+         return i != 0;
+     }
 
-            for (; _pos < _bufferLen; ++_pos)
-            {
-                b = _buffer[_pos];
+     public void GotoNextLine()
+     {
+         for (; _pos < _bufferLen; ++_pos)
+         {
+             char c = Convert.ToChar(_buffer[_pos]);
+             if (c == '\n')
+             {
+                 ++_line;
+                 ++_pos;
 
-                if (b == '\n' || b == ' ')
-                {
-                    continue;
-                }
+                 break;
+             }
+         }
+     }
 
-                if (IsComment(b))
-                {
-                    for (_pos += 2; _pos < _bufferLen; ++_pos)
-                    {
-                        b = _buffer[_pos];
+     public char GetTail()
+     {
+         return (_pos >= _bufferLen) ? '\0' : Convert.ToChar(_buffer[_pos]);
+     }
 
-                        if (b == '\n')
-                            break;
-                    }
+     public bool IsEnd()
+     {
+         uint pos = _pos;
+         char c = '\0';
 
-                    continue;
-                }
+         for (; _pos < _bufferLen; ++_pos)
+         {
+             c = Convert.ToChar(_buffer[_pos]);
 
-                if (IsDelimiter(b))
-                {
-                    continue;
-                }
+             if (c == '\n' || c == ' ')
+             {
+                 continue;
+             }
 
-                _pos = pos;
-                return false;
-            }
+             if (IsComment(c))
+             {
+                 for (_pos += 2; _pos < _bufferLen; ++_pos)
+                 {
+                     c = Convert.ToChar(_buffer[_pos]);
 
-            _pos = pos;
-            return true;
-        }
-    }
+                     if (c == '\n')
+                         break;
+                 }
+
+                 continue;
+             }
+
+             if (IsDelimiter(c))
+             {
+                 continue;
+             }
+
+             _pos = pos;
+             return false;
+         }
+
+         _pos = pos;
+         return true;
+     }
+ }
 }
