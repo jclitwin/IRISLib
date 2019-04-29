@@ -5,9 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IRISLib
-{
-    public class FileManager
+public class FileManager
     {
         protected static byte[] _bytes;
         protected static int _size;
@@ -61,4 +59,3 @@ namespace IRISLib
             }
         }
     }
-}
